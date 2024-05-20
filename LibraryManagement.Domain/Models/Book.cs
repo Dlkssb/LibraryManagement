@@ -10,7 +10,7 @@ namespace LibraryManagement.Domain.Models
     public class Book
     {
         [Key]
-        public string ISBN { get; set; }
+        public string ISBN { get; set; } = new Guid().ToString();
         public string Title { get; set; }
         public string Author { get; set; }
         public int PublishedYear { get; set; }

@@ -1,36 +1,26 @@
 using LibraryManagement.Application.Features.Book.Commands;
 using LibraryManagement.Application.Features.Book.Queries;
 using LibraryManagement.Application.IRepositories;
-using LibraryManagement.Infrastructure;
 using LibraryManagement.Infrastructure.Repository;
+using LibraryManagement.Infrastructure;
 using LibraryManagement.WebAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Configuration;
-using System.Net.NetworkInformation;
-using System.Reflection;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using LibraryManagement.Application.Responses;
 
 var builder = WebApplication.CreateBuilder(args);
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings.GetValue<string>("SecretKey");
-var issuer = jwtSettings.GetValue<string>("Issuer");
-var audience = jwtSettings.GetValue<string>("Audience"); 
 
 // Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
 builder.Services.AddDbContext<LibraryContext>(options =>
-       options.UseSqlServer(builder.Configuration.GetConnectionString("LibraryDatabase")));
-
-
-
+    options.UseSqlServer(builder.Configuration.GetConnectionString("LibraryDatabase")));
 
 builder.Services.AddTransient<IBookRepository, BookRepository>();
 builder.Services.AddTransient<IAuthenticationService, MockAuthenticationService>();
@@ -39,7 +29,74 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Get
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(DeleteBookCommand).Assembly));
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(UpdateBookCommand).Assembly));
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(DeleteBookCommand).Assembly));
-builder.Services.AddMemoryCache();  
+
+builder.Services.AddMemoryCache();
+
+// Configure JWT authentication
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings.GetValue<string>("SecretKey");
+var issuer = jwtSettings.GetValue<string>("Issuer");
+var audience = jwtSettings.GetValue<string>("Audience");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+          .AddJwtBearer(o =>
+          {
+              o.RequireHttpsMetadata = false;
+              o.SaveToken = false;
+              o.TokenValidationParameters = new TokenValidationParameters
+              {
+                  ValidateIssuerSigningKey = true,
+                  ValidateIssuer = false,
+                  ValidateAudience = false,
+                  ValidateLifetime = true,
+                  ClockSkew = TimeSpan.Zero,
+                  ValidIssuer = issuer,
+                  ValidAudience = audience,
+                  IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+              };
+              o.Events = new JwtBearerEvents()
+              {
+                  
+                  OnAuthenticationFailed = context =>
+                  {
+                      var result = "";
+                      if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                      {
+                          context.Response.Headers.Add("Token-Expired", "true");
+                          result = JsonConvert.SerializeObject(new Response<string>("Token Expired", false, "Token Expired"));
+                      }
+                      else
+                      {
+                          result = JsonConvert.SerializeObject(new Response<string>("Token Authentication Failed", false, context.Exception.ToString()));
+                      }
+                      context.NoResult();
+                      context.Response.StatusCode = 900;
+                      context.Response.ContentType = "application/json";
+                      return context.Response.WriteAsync(result);
+                  },
+                  OnChallenge = context =>
+                  {
+                      context.HandleResponse();
+                      context.Response.StatusCode = 401;
+                      context.Response.ContentType = "application/json";
+                      var result = JsonConvert.SerializeObject(new Response<string>("you are  not authorized", false, "Not Authorized"));
+                      return context.Response.WriteAsync(result);
+                  },
+                  OnForbidden = context =>
+                  {
+                      context.Response.StatusCode = 403;
+                      context.Response.ContentType = "application/json";
+                      var result = JsonConvert.SerializeObject(new Response<string>("You are not authorized to access this resource", false, "Forbidden"));
+                      return context.Response.WriteAsync(result);
+                  },
+              };
+          });
+
+// Configure Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API Name", Version = "v1" });
@@ -57,40 +114,20 @@ builder.Services.AddSwaggerGen(c =>
 
     c.AddSecurityDefinition("Bearer", securityScheme);
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
+            new OpenApiSecurityScheme
             {
-                new OpenApiSecurityScheme
+                Reference = new OpenApiReference
                 {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                new string[] { }
-            }
-        });
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] { }
+        }
+    });
 });
-builder.Services.AddControllers();
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = issuer,
-                    ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
-                };
-            });
-
-
-
-
 
 var app = builder.Build();
 
@@ -103,7 +140,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseRouting();
+
+// Use authentication before authorization
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.UseMiddleware<JwtMiddleware>();
 app.UseMiddleware<ExceptionHandlerMiddleware>();
 

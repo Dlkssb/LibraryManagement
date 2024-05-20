@@ -17,7 +17,7 @@ namespace LibraryManagement.Infrastructure.Repository
         {
             _context = context;
         }
-     
+
 
         public async Task<Book> GetByISBNAsync(string isbn)
         {
@@ -45,5 +45,12 @@ namespace LibraryManagement.Infrastructure.Repository
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<List<Book>> GetAllAsync()
+        {
+            return _context.Books.ToList();
+        }
+
+
     }
 }

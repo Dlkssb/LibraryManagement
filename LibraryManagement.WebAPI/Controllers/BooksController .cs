@@ -1,5 +1,6 @@
 using LibraryManagement.Application.Features.Book.Commands;
 using LibraryManagement.Application.Features.Book.Queries;
+using LibraryManagement.Application.Responses;
 using LibraryManagement.Domain.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -47,7 +48,7 @@ public class BooksController : ControllerBase
     }
 
     [HttpGet("{isbn}")]
-    public async Task<ActionResult<Book>> GetBook(string isbn)
+    public async Task<ActionResult<Response<Book>>> GetBook(string isbn)
     {
         var query = new GetBookByISBNQuery { ISBN = isbn };
         var book = await _mediator.Send(query);
@@ -60,19 +61,26 @@ public class BooksController : ControllerBase
         return book;
     }
 
+    [HttpGet("books/all")]
+    [Authorize]
+    public async Task<ActionResult<Response<List<Book>>>> GetAllBooks()
+    {
+        return await _mediator.Send(new GetAllBooks());
+    }
+
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<Book>> CreateBook(CreateBookCommand command)
     {
         var book = await _mediator.Send(command);
-        return CreatedAtAction(nameof(GetBook), new { isbn = book.ISBN }, book);
+        return CreatedAtAction(nameof(GetBook), new { isbn = book.Data.ISBN }, book);
     }
 
     [HttpPut("{isbn}")]
     [Authorize]
     public async Task<IActionResult> UpdateBook(string isbn, UpdateBookCommand command)
     {
-        if (isbn != command.ISBN)
+        if (isbn != command.ISBN.ToString())
         {
             return BadRequest();
         }
@@ -91,7 +99,7 @@ public class BooksController : ControllerBase
     [Authorize]
     public async Task<IActionResult> DeleteBook(string isbn)
     {
-        var command = new DeleteBookCommand { ISBN = isbn };
+        var command = new DeleteBookCommand { ISBN = new Guid(isbn) };
         var result = await _mediator.Send(command);
 
         if (result == null)

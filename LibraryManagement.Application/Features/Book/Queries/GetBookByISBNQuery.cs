@@ -1,4 +1,5 @@
 ﻿using LibraryManagement.Application.IRepositories;
+using LibraryManagement.Application.Responses;
 using MediatR;
 using Microsoft.Extensions.Caching.Memory;
 using System;
@@ -9,12 +10,12 @@ using System.Threading.Tasks;
 
 namespace LibraryManagement.Application.Features.Book.Queries
 {
-    public class GetBookByISBNQuery : IRequest<LibraryManagement.Domain.Models.Book>
+    public class GetBookByISBNQuery : IRequest<Response<LibraryManagement.Domain.Models.Book>>
     {
         public string ISBN { get; set; }
 
 
-        public class GetBookByISBNQueryHandler : IRequestHandler<GetBookByISBNQuery, LibraryManagement.Domain.Models.Book>
+        public class GetBookByISBNQueryHandler : IRequestHandler<GetBookByISBNQuery, Response<LibraryManagement.Domain.Models.Book>>
         {
             private readonly IBookRepository _repository;
             private readonly IMemoryCache _cache;
@@ -26,7 +27,7 @@ namespace LibraryManagement.Application.Features.Book.Queries
                 _cache = cache;
             }
 
-            public async Task<LibraryManagement.Domain.Models.Book> Handle(GetBookByISBNQuery request, CancellationToken cancellationToken)
+            public async Task<Response<LibraryManagement.Domain.Models.Book>> Handle(GetBookByISBNQuery request, CancellationToken cancellationToken)
             {
                 var cacheKey = $"{CacheKeyPrefix}{request.ISBN}";
 
@@ -44,7 +45,7 @@ namespace LibraryManagement.Application.Features.Book.Queries
                     }
                 }
 
-                return book;
+                return new Response<LibraryManagement.Domain.Models.Book>() { Data = book, Success = true, Message = "Done" };
             }
         }
     }

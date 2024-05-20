@@ -13,5 +13,6 @@ namespace LibraryManagement.Application.IRepositories
         Task AddAsync(Book book);
         Task UpdateAsync(Book book);
         Task DeleteAsync(string isbn);
+        Task<List<Book>> GetAllAsync();
     }
 }
