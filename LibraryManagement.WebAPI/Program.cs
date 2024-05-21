@@ -37,7 +37,6 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings.GetValue<string>("SecretKey");
 var issuer = jwtSettings.GetValue<string>("Issuer");
 var audience = jwtSettings.GetValue<string>("Audience");
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
