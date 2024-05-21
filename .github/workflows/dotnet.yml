@@ -44,12 +44,12 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build -t ghcr.io/${{ github.repository }}/myapp:latest .
-        docker push ghcr.io/${{ github.repository }}/myapp:latest
+          docker build -t ghcr.io/dlkssb/librarymanagement/myapp:latest .
+          docker push ghcr.io/dlkssb/librarymanagement/myapp:latest
 
     - name: Save Docker image to file
       run: |
-        docker save ghcr.io/${{ github.repository }}/myapp:latest -o myapp_latest.tar
+        docker save ghcr.io/librarymanagement/myapp:latest -o myapp_latest.tar
 
     - name: Upload Docker image artifact
       uses: actions/upload-artifact@v3
