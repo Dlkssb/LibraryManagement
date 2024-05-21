@@ -28,9 +28,6 @@ public class BooksController : ControllerBase
     public async Task<ActionResult<string>> GetJWT(string userId)
     {
 
-        
-
-
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes("ThisIsASecretKeyForJWTTokenGeneration"); // Replace with your secret key
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -92,7 +89,7 @@ public class BooksController : ControllerBase
             return NotFound();
         }
 
-        return NoContent();
+        return Ok(updatedBook);
     }
 
     [HttpDelete("{isbn}")]

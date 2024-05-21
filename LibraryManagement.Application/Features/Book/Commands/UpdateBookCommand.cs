@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace LibraryManagement.Application.Features.Book.Commands
 {
-    public class UpdateBookCommand : IRequest<Response<LibraryManagement.Domain.Models.Book>>
+    public class UpdateBookCommand : IRequest<Response<string>>
     {
         public string ISBN { get; set; }
         public string Title { get; set; }
@@ -18,7 +18,7 @@ namespace LibraryManagement.Application.Features.Book.Commands
         public int PublishedYear { get; set; }
     }
 
-    public class UpdateBookCommandHandler : IRequestHandler<UpdateBookCommand, Response<LibraryManagement.Domain.Models.Book>>
+    public class UpdateBookCommandHandler : IRequestHandler<UpdateBookCommand, Response<string>>
     {
         private readonly IBookRepository _repository;
         private readonly IMemoryCache _cache;
@@ -30,7 +30,7 @@ namespace LibraryManagement.Application.Features.Book.Commands
             _cache = cache;
         }
 
-        public async Task<Response<LibraryManagement.Domain.Models.Book>> Handle(UpdateBookCommand request, CancellationToken cancellationToken)
+        public async Task<Response<string>> Handle(UpdateBookCommand request, CancellationToken cancellationToken)
         {
             var book = new LibraryManagement.Domain.Models.Book
             {
@@ -45,7 +45,7 @@ namespace LibraryManagement.Application.Features.Book.Commands
             var cacheKey = $"{CacheKeyPrefix}{book.ISBN}";
             _cache.Remove(cacheKey);  // Invalidate the cache
 
-            return new Response<Domain.Models.Book>() { Data = book, Success = true, Message = "Updated " };
+            return new Response<string>() { Data = book.ISBN.ToString(), Success = true, Message = "Updated " };
         }
     }
 }
